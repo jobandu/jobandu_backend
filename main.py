@@ -1,12 +1,11 @@
 # main.py
-# ─────────────────────────────────────────────────────────────────────────────
-# Entry point for the FastAPI application.
-# This file:
-#   1. Creates the FastAPI app instance
-#   2. Adds middleware (CORS, logging, etc.)
-#   3. Registers all route routers
-#   4. Defines startup/shutdown events
-# ─────────────────────────────────────────────────────────────────────────────
+
+import os
+
+# Fix for OpenSSL 3.x SECLEVEL=2 incompatibility with MongoDB Atlas on Render
+_openssl_conf = os.path.join(os.path.dirname(__file__), "openssl.cnf")
+if os.path.exists(_openssl_conf):
+    os.environ.setdefault("OPENSSL_CONF", _openssl_conf)
 
 import time
 from fastapi import FastAPI, Request
