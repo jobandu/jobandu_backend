@@ -1,11 +1,15 @@
 # main.py
 
-import os
+import ssl
 
-# Fix for OpenSSL 3.x SECLEVEL=2 incompatibility with MongoDB Atlas on Render
-_openssl_conf = os.path.join(os.path.dirname(__file__), "openssl.cnf")
-if os.path.exists(_openssl_conf):
-    os.environ.setdefault("OPENSSL_CONF", _openssl_conf)
+# Must be before ALL other imports
+_orig = ssl.create_default_context
+def _patched(*args, **kwargs):
+    ctx = _orig(*args, **kwargs)
+    ctx.set_ciphers("DEFAULT@SECLEVEL=1")
+    return ctx
+ssl.create_default_context = _patched
+
 
 import time
 from fastapi import FastAPI, Request

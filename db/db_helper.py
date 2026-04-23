@@ -3,18 +3,26 @@
 # We create ONE client for the whole app lifetime (singleton pattern).
 # ─────────────────────────────────────────────────────────────────────────────
 
-from config import settings
-from pymongo import AsyncMongoClient
+import ssl
 import certifi
+from pymongo import AsyncMongoClient
+from config import settings
 
+# Patch ssl.create_default_context BEFORE pymongo uses it
+_orig = ssl.create_default_context
+def _patched(*args, **kwargs):
+    ctx = _orig(*args, **kwargs)
+    ctx.set_ciphers("DEFAULT@SECLEVEL=1")
+    return ctx
+ssl.create_default_context = _patched
 
-# ── Create the async MongoDB client ──────────────────────────────────────────
-# This connection is re-used for every request (not created per request).
+# No ssl_context parameter — pymongo will use the patched ssl module internally
 client: AsyncMongoClient = AsyncMongoClient(
-    settings.MONGODB_URI, 
+    settings.MONGODB_URI,
     tls=True,
-    tlsCAFile=certifi.where()
+    tlsCAFile=certifi.where(),
 )
+
 
 # Select our database
 db = client[settings.DB_NAME]
