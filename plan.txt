@@ -1,0 +1,98 @@
+Applicants Collection
+{
+  "_id": "ObjectId",
+  "name": "Rahul Kumar",
+  "email": "rahul@gmail.com",
+  "phone": "+91XXXX",
+
+  "skills": ["driver", "warehouse"],
+  "experience_years": 3,
+  "location": "Berlin",
+
+  "cv_url": "s3_link",
+
+  "status": "applied", 
+  "tags": ["urgent"],
+
+  "created_at": "datetime"
+}
+
+
+Employers Collection
+
+{
+  "_id": "ObjectId",
+  "company_name": "ABC Logistics",
+  "contact_person": "John",
+  "email": "abc@gmail.com",
+  "phone": "+49XXXX",
+
+  "requirements": ["driver"],
+  "location": "Hamburg",
+  "notes": "Need urgent drivers",
+
+  "status": "open",
+
+  "created_at": "datetime"
+}
+
+
+Admin Users
+
+{
+  "email": "admin@jobandu.dk",
+  "password_hash": "hashed",
+  "role": "admin"
+}
+
+
+
+Apply Job
+POST /api/applicants
+
+Upload CV → S3
+Save data in Mongo
+POST /api/employers
+
+Request Staff
+POST /api/employers
+
+Get Applicants
+
+GET /api/admin/applicants
+?skill=driver&status=applied
+
+
+Update Status
+PATCH /api/admin/applicants/{id}
+{
+  "status": "contacted"
+}
+
+
+Get Employers
+
+GET /api/admin/employers
+
+Status Workflow
+Applied → Reviewed → Contacted → Placed
+
+Store in DB
+"status": "reviewed"
+
+S3 File Upload Flow
+Frontend → FastAPI → S3 → return URL
+
+Authentication (Admin)
+simple username and password with base64 encoding 
+
+
+
+
+mongodb
+forjobandu_db
+jobandu_password
+
+mongodb+srv://forjobandu_db:jobandu_password@cluster0.lv14rux.mongodb.net/?appName=Cluster0
+
+mongodb+srv://forjobandu_db:<db_password>@cluster0.lv14rux.mongodb.net/?appName=Cluster0

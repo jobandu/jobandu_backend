@@ -1,0 +1,15 @@
+# requirements.txt
+# Run: pip install -r requirements.txt
+
+fastapi         # The web framework
+uvicorn[standard]  # ASGI server to run FastAPI
+
+pymongo           # Async MongoDB driver
+
+# aioboto3       # Async wrapper around boto3 — uncomment when switching to S3
+
+aiosmtplib       # Async SMTP client for sending Gmail
+pydantic           # Data validation (used by FastAPI)
+pydantic-settings  # Loads settings from .env file
+python-dotenv      # Reads .env files
+python-multipart   # Required for FastAPI to handle file uploads (Form + File)

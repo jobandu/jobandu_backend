@@ -1,0 +1,21 @@
+# openssl.cnf — local override for this project only
+# ─────────────────────────────────────────────────────────────────────────────
+# OpenSSL 3.5+ raised the default security level to 2, which causes
+# "TLSV1_ALERT_INTERNAL_ERROR" when connecting to MongoDB Atlas.
+# Setting SECLEVEL=1 restores the older, compatible behavior.
+#
+# This file is NOT a system-wide change. It only applies when you set:
+#   export OPENSSL_CONF=/path/to/this/openssl.cnf
+# ─────────────────────────────────────────────────────────────────────────────
+
+openssl_conf = openssl_init
+
+[openssl_init]
+ssl_conf = ssl_sect
+
+[ssl_sect]
+system_default = system_default_sect
+
+[system_default_sect]
+CipherString = DEFAULT@SECLEVEL=1
+MinProtocol = TLSv1.2
