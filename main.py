@@ -67,7 +67,7 @@ allowed_origins = [origin.strip() for origin in settings.ALLOWED_ORIGINS.split("
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=allowed_origins,       # Only these origins are allowed
+    allow_origins=["*"],       # Only these origins are allowed
     allow_credentials=True,              # Allow cookies / Authorization headers
     allow_methods=["*"],                 # Allow GET, POST, PATCH, DELETE, etc.
     allow_headers=["*"],                 # Allow all headers (Content-Type, Authorization, etc.)
