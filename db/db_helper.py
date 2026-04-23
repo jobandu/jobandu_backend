@@ -9,7 +9,7 @@ from pymongo import AsyncMongoClient
 
 # ── Create the async MongoDB client ──────────────────────────────────────────
 # This connection is re-used for every request (not created per request).
-client: AsyncMongoClient = AsyncMongoClient(settings.MONGODB_URI)
+client: AsyncMongoClient = AsyncMongoClient(settings.MONGODB_URI, tls=True,tlsAllowInvalidCertificates=True)
 
 # Select our database
 db = client[settings.DB_NAME]

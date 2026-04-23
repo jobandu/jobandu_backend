@@ -7,11 +7,11 @@
 #   level to 2, which causes "TLSV1_ALERT_INTERNAL_ERROR" when connecting
 #   to MongoDB Atlas. Our local openssl.cnf sets SECLEVEL=1 to fix this.
 
-cd "$(dirname "$0")"   # make sure we're always in the project directory
+# cd "$(dirname "$0")"   # make sure we're always in the project directory
 
-source venv/bin/activate
+# source venv/bin/activate
 
-export OPENSSL_CONF="$(pwd)/openssl.cnf"
+# export OPENSSL_CONF="$(pwd)/openssl.cnf"
 
-echo "Using OpenSSL config: $OPENSSL_CONF"
-uvicorn main:app --reload
+# echo "Using OpenSSL config: $OPENSSL_CONF"
+# uvicorn main:app --reload
