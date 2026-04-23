@@ -13,3 +13,4 @@ pydantic           # Data validation (used by FastAPI)
 pydantic-settings  # Loads settings from .env file
 python-dotenv      # Reads .env files
 python-multipart   # Required for FastAPI to handle file uploads (Form + File)
+gunicorn
