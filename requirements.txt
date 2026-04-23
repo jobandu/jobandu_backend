@@ -5,6 +5,7 @@ fastapi         # The web framework
 uvicorn[standard]  # ASGI server to run FastAPI
 
 pymongo           # Async MongoDB driver
+certifi           # CA bundle for MongoDB SSL connections
 
 # aioboto3       # Async wrapper around boto3 — uncomment when switching to S3
 

@@ -5,11 +5,16 @@
 
 from config import settings
 from pymongo import AsyncMongoClient
+import certifi
 
 
 # ── Create the async MongoDB client ──────────────────────────────────────────
 # This connection is re-used for every request (not created per request).
-client: AsyncMongoClient = AsyncMongoClient(settings.MONGODB_URI, tls=True,tlsAllowInvalidCertificates=True)
+client: AsyncMongoClient = AsyncMongoClient(
+    settings.MONGODB_URI, 
+    tls=True,
+    tlsCAFile=certifi.where()
+)
 
 # Select our database
 db = client[settings.DB_NAME]
