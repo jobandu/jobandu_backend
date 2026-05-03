@@ -22,9 +22,20 @@ class Settings(BaseSettings):
     # Set to false to store CVs in the local uploads/cvs/ folder.
     USE_S3_STORAGE: bool = False
 
-    # ── Gmail SMTP ───────────────────────────────────────────────────────────
-    GMAIL_USER: str
-    GMAIL_APP_PASSWORD: str
+    # ── Email ────────────────────────────────────────────────────────────────
+    # Resend API (preferred — works on Railway/Render via HTTPS port 443).
+    # Sign up free at https://resend.com → API Keys → create one.
+    # If set, Resend is used. If empty, falls back to Gmail SMTP.
+    RESEND_API_KEY: str = ""
+
+    # The "From" address shown in emails sent via Resend.
+    # Must be a verified domain in your Resend account.
+    # For testing you can use: onboarding@resend.dev
+    RESEND_FROM_EMAIL: str = "onboarding@resend.dev"
+
+    # ── Gmail SMTP (fallback for local dev) ──────────────────────────────────
+    GMAIL_USER: str = ""
+    GMAIL_APP_PASSWORD: str = ""
 
     # Comma-separated list of admin emails who receive new applicant/employer notifications.
     # Example: "hr@jobandu.dk,ops@jobandu.dk"

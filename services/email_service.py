@@ -13,7 +13,9 @@
 # ─────────────────────────────────────────────────────────────────────────────
 
 import os
+import asyncio
 import aiosmtplib
+import resend
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.mime.application import MIMEApplication
@@ -26,6 +28,13 @@ logger = AppLogger.get_logger()
 
 # Jobandu brand logo (used in all email templates)
 LOGO_URL = "https://jobandu.de/wp-content/uploads/2025/05/1.png"
+
+# Configure Resend SDK once at import time (no-op if key is empty)
+if settings.RESEND_API_KEY:
+    resend.api_key = settings.RESEND_API_KEY
+    logger.info("📧 Email provider: Resend (HTTPS)")
+else:
+    logger.info("📧 Email provider: Gmail SMTP (fallback)")
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -124,7 +133,11 @@ async def send_email(
     attachment_filename: Optional[str] = None,     # filename shown in email (e.g. "cv.pdf")
 ) -> bool:
     """
-    Sends an HTML email via Gmail SMTP.
+    Sends an HTML email.
+
+    Uses Resend (HTTPS) if RESEND_API_KEY is set in config — this works on
+    Railway/Render where SMTP port 587 is blocked.
+    Falls back to Gmail SMTP when RESEND_API_KEY is empty (local dev).
 
     Args:
         to_emails:           List of recipient email addresses
@@ -137,8 +150,69 @@ async def send_email(
     Returns:
         bool: True if sent successfully, False otherwise
     """
+    if settings.RESEND_API_KEY:
+        return await _send_via_resend(
+            to_emails, subject, body_html, cc_emails,
+            attachment_bytes, attachment_filename
+        )
+    else:
+        return await _send_via_smtp(
+            to_emails, subject, body_html, cc_emails,
+            attachment_bytes, attachment_filename
+        )
 
-    # Use "mixed" when we have attachments, "alternative" when HTML-only
+
+async def _send_via_resend(
+    to_emails: List[str],
+    subject: str,
+    body_html: str,
+    cc_emails: Optional[List[str]] = None,
+    attachment_bytes: Optional[bytes] = None,
+    attachment_filename: Optional[str] = None,
+) -> bool:
+    """
+    Sends via Resend REST API (HTTPS port 443).
+    Works on Railway, Render, and any cloud provider that blocks SMTP.
+    """
+    try:
+        params: resend.Emails.SendParams = {
+            "from": settings.RESEND_FROM_EMAIL,
+            "to": to_emails,
+            "subject": subject,
+            "html": body_html,
+        }
+        if cc_emails:
+            params["cc"] = cc_emails
+        if attachment_bytes and attachment_filename:
+            import base64
+            params["attachments"] = [{
+                "filename": attachment_filename,
+                "content": list(attachment_bytes),  # Resend expects list of ints
+            }]
+
+        # Resend SDK is synchronous — run in thread pool to stay async-friendly
+        email = await asyncio.get_event_loop().run_in_executor(
+            None, lambda: resend.Emails.send(params)
+        )
+        logger.info(f"✅ Email sent via Resend → {to_emails} | id={email.get('id')}")
+        return True
+    except Exception as e:
+        logger.error(f"Email failed → {to_emails} | {e}")
+        return False
+
+
+async def _send_via_smtp(
+    to_emails: List[str],
+    subject: str,
+    body_html: str,
+    cc_emails: Optional[List[str]] = None,
+    attachment_bytes: Optional[bytes] = None,
+    attachment_filename: Optional[str] = None,
+) -> bool:
+    """
+    Sends via Gmail SMTP (port 587 with STARTTLS).
+    Works locally but may be blocked on Railway/Render.
+    """
     if attachment_bytes:
         message = MIMEMultipart("mixed")
     else:
@@ -151,17 +225,14 @@ async def send_email(
     if cc_emails:
         message["Cc"] = ", ".join(cc_emails)
 
-    # Attach the HTML body
     html_part = MIMEText(body_html, "html")
     message.attach(html_part)
 
-    # Attach the file if bytes were provided
     if attachment_bytes and attachment_filename:
         file_part = MIMEApplication(attachment_bytes, Name=attachment_filename)
         file_part["Content-Disposition"] = f'attachment; filename="{attachment_filename}"'
         message.attach(file_part)
 
-    # Build the full recipients list (TO + CC) for SMTP delivery
     all_recipients = list(to_emails)
     if cc_emails:
         all_recipients.extend(cc_emails)
@@ -176,6 +247,7 @@ async def send_email(
             password=settings.GMAIL_APP_PASSWORD,
             recipients=all_recipients,
         )
+        logger.info(f"✅ Email sent via Gmail SMTP → {to_emails}")
         return True
     except Exception as e:
         logger.error(f"Email failed → {to_emails} | {e}")

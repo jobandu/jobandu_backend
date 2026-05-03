@@ -9,7 +9,8 @@ certifi           # CA bundle for MongoDB SSL connections
 pymongo[srv]
 aioboto3          # Async wrapper around boto3 for S3 uploads and pre-signed URLs
 
-aiosmtplib       # Async SMTP client for sending Gmail
+aiosmtplib       # Async SMTP client for sending Gmail (local dev fallback)
+resend            # Resend email API — works on Railway/Render (HTTPS, no SMTP needed)
 pydantic           # Data validation (used by FastAPI)
 pydantic-settings  # Loads settings from .env file
 python-dotenv      # Reads .env files
