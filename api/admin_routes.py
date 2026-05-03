@@ -12,9 +12,10 @@
 # ─────────────────────────────────────────────────────────────────────────────
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
 from bson import ObjectId
 from typing import List, Optional
+import os
 
 from db.db_helper import get_applicants_collection, get_employers_collection
 from models.applicant_model import ApplicantStatusUpdate
@@ -22,6 +23,7 @@ from models.employer_model import EmployerStatusUpdate
 from schemas.applicant_schema import applicant_helper
 from schemas.employer_schema import employer_helper
 from services.email_service import send_email
+from config import settings
 from utils.auth import verify_admin
 from utils.logger import AppLogger
 from pydantic import BaseModel
@@ -129,6 +131,47 @@ async def delete_applicant(applicant_id: str):
     return {"message": "Applicant deleted successfully"}
 
 
+@router.get("/applicants/{applicant_id}/download-cv", summary="Download applicant CV")
+async def download_applicant_cv(applicant_id: str):
+    """
+    Returns the CV for a given applicant.
+
+    - If storage is S3 (public bucket): returns the public S3 URL as JSON.
+      The frontend should open this URL directly in a new tab.
+    - If storage is local: streams the file as a direct download.
+    """
+
+    if not ObjectId.is_valid(applicant_id):
+        raise HTTPException(status_code=400, detail="Invalid applicant ID format")
+
+    collection = get_applicants_collection()
+    applicant = await collection.find_one({"_id": ObjectId(applicant_id)})
+
+    if not applicant:
+        raise HTTPException(status_code=404, detail="Applicant not found")
+
+    cv_url = applicant.get("cv_url")
+    if not cv_url:
+        raise HTTPException(status_code=404, detail="No CV found for this applicant")
+
+    # ── S3 (public bucket): cv_url IS the final public URL ────────────────
+    # Just return it — no pre-signed URL needed, no redirect, no extra API call.
+    # Frontend opens it with window.open(url) or an <a> tag.
+    if settings.USE_S3_STORAGE:
+        return JSONResponse(content={"cv_url": cv_url})
+
+    # ── Local storage: stream file directly as a download ────────────────
+    if not os.path.exists(cv_url):
+        raise HTTPException(status_code=404, detail="CV file not found on server")
+
+    filename = os.path.basename(cv_url)
+    return FileResponse(
+        path=cv_url,
+        filename=filename,
+        media_type="application/octet-stream",
+    )
+
+
 # ── EMPLOYER ROUTES ───────────────────────────────────────────────────────────
 
 @router.get("/employers", summary="Get all employer requests with optional filters")
@@ -214,7 +257,7 @@ async def admin_send_email(email_data: CustomEmailRequest):
     This is used to contact applicants or employers directly.
     """
     success = await send_email(
-        to_email=email_data.to_email,
+        to_emails=[email_data.to_email],
         subject=email_data.subject,
         body_html=email_data.body_html,
     )

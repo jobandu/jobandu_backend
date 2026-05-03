@@ -13,13 +13,13 @@ import json
 from db.db_helper import get_applicants_collection
 from models.applicant_model import ApplicantResponse
 from schemas.applicant_schema import applicant_helper
-# TODO: swap this import with s3_service.upload_cv_to_s3 when S3 is ready
-from services.local_storage_service import save_cv_locally
+from services.cv_storage_service import save_cv
 from services.email_service import (
     send_applicant_confirmation,
     send_admin_notification_new_applicant,
 )
 from utils.logger import AppLogger
+from config import settings
 
 logger = AppLogger.get_logger()
 
@@ -62,10 +62,16 @@ async def create_applicant(
         logger.error(f"Invalid skills input from {email}: {e}")
         raise HTTPException(status_code=400, detail="Invalid skills format. Send a JSON array like '[\"driver\"]'")
 
-    # Save CV to local folder if a file was provided
+    # Save CV using the storage service (local or S3 based on USE_S3_STORAGE flag)
     cv_url = None
+    cv_bytes = None      # raw bytes — used to attach CV to emails
+    cv_filename = None   # original filename shown in email attachment
     if cv is not None:
-        cv_url = await save_cv_locally(cv)
+        logger.info(f"CV received: '{cv.filename}' ({cv.content_type}) — uploading via {'S3' if settings.USE_S3_STORAGE else 'local'}...")
+        cv_url, cv_bytes = await save_cv(cv)
+        cv_filename = cv.filename or "resume.pdf"
+    else:
+        logger.info(f"No CV file attached by applicant {email}")
 
     # Build the document to save in MongoDB
     applicant_doc = {
@@ -87,14 +93,13 @@ async def create_applicant(
 
     logger.info(f"New applicant: {name} ({email}) | id={result.inserted_id}")
 
-    # Send confirmation to applicant — CV is attached so they have a copy
+    # Send confirmation to applicant — no CV attachment
     await send_applicant_confirmation(
         applicant_name=name,
         applicant_email=email,
-        cv_path=cv_url,
     )
 
-    # Notify admin team — CV is attached + full details included
+    # Notify admin team — CV attached as bytes + full details included
     await send_admin_notification_new_applicant(
         applicant_name=name,
         applicant_email=email,
@@ -102,7 +107,8 @@ async def create_applicant(
         applicant_skills=skills_list,
         applicant_location=location,
         applicant_experience_years=experience_years,
-        cv_path=cv_url,
+        cv_bytes=cv_bytes,
+        cv_filename=cv_filename,
     )
 
     return JSONResponse(

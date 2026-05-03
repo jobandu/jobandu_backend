@@ -7,7 +7,7 @@ uvicorn[standard]  # ASGI server to run FastAPI
 pymongo           # Async MongoDB driver
 certifi           # CA bundle for MongoDB SSL connections
 pymongo[srv]
-# aioboto3       # Async wrapper around boto3 — uncomment when switching to S3
+aioboto3          # Async wrapper around boto3 for S3 uploads and pre-signed URLs
 
 aiosmtplib       # Async SMTP client for sending Gmail
 pydantic           # Data validation (used by FastAPI)

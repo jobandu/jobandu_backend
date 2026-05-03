@@ -120,24 +120,26 @@ async def send_email(
     subject: str,
     body_html: str,
     cc_emails: Optional[List[str]] = None,
-    attachment_path: Optional[str] = None,   # local file path to attach
+    attachment_bytes: Optional[bytes] = None,      # raw file bytes to attach
+    attachment_filename: Optional[str] = None,     # filename shown in email (e.g. "cv.pdf")
 ) -> bool:
     """
     Sends an HTML email via Gmail SMTP.
 
     Args:
-        to_emails:       List of recipient email addresses
-        subject:         Email subject line
-        body_html:       Full HTML content (use _card_wrapper() for branded look)
-        cc_emails:       Optional list of CC email addresses
-        attachment_path: Optional path to a local file to attach (e.g. CV PDF)
+        to_emails:           List of recipient email addresses
+        subject:             Email subject line
+        body_html:           Full HTML content
+        cc_emails:           Optional list of CC addresses
+        attachment_bytes:    Raw bytes of a file to attach (e.g. CV content)
+        attachment_filename: Filename shown to the recipient (e.g. "resume.pdf")
 
     Returns:
         bool: True if sent successfully, False otherwise
     """
 
     # Use "mixed" when we have attachments, "alternative" when HTML-only
-    if attachment_path:
+    if attachment_bytes:
         message = MIMEMultipart("mixed")
     else:
         message = MIMEMultipart("alternative")
@@ -153,14 +155,10 @@ async def send_email(
     html_part = MIMEText(body_html, "html")
     message.attach(html_part)
 
-    # Attach file if provided (e.g. CV/resume)
-    if attachment_path and os.path.exists(attachment_path):
-        filename = os.path.basename(attachment_path)
-        with open(attachment_path, "rb") as f:
-            file_data = f.read()
-
-        file_part = MIMEApplication(file_data, Name=filename)
-        file_part["Content-Disposition"] = f'attachment; filename="{filename}"'
+    # Attach the file if bytes were provided
+    if attachment_bytes and attachment_filename:
+        file_part = MIMEApplication(attachment_bytes, Name=attachment_filename)
+        file_part["Content-Disposition"] = f'attachment; filename="{attachment_filename}"'
         message.attach(file_part)
 
     # Build the full recipients list (TO + CC) for SMTP delivery
@@ -176,7 +174,7 @@ async def send_email(
             start_tls=True,
             username=settings.GMAIL_USER,
             password=settings.GMAIL_APP_PASSWORD,
-            recipients=all_recipients,   # explicit list ensures CC is actually delivered
+            recipients=all_recipients,
         )
         return True
     except Exception as e:
@@ -189,11 +187,10 @@ async def send_email(
 async def send_applicant_confirmation(
     applicant_name: str,
     applicant_email: str,
-    cv_path: Optional[str] = None,   # local path to CV file for attachment
 ):
     """
     Sends a branded confirmation email to the applicant.
-    Attaches their uploaded CV so they have a copy in their inbox.
+    CV is NOT attached here — it is only sent to the admin.
     """
     subject = "We received your application – Jobandu"
 
@@ -234,12 +231,10 @@ async def send_applicant_confirmation(
 
     body = _card_wrapper(inner)
 
-    # Attach CV if provided so the applicant has a copy
     return await send_email(
         to_emails=[applicant_email],
         subject=subject,
         body_html=body,
-        # attachment_path=cv_path,
     )
 
 
@@ -302,13 +297,14 @@ async def send_admin_notification_new_applicant(
     applicant_skills: list = None,
     applicant_location: str = "",
     applicant_experience_years: int = 0,
-    cv_path: Optional[str] = None,   # attach CV so admin sees it immediately
+    cv_bytes: Optional[bytes] = None,       # raw CV bytes for email attachment
+    cv_filename: Optional[str] = None,      # filename shown in email
 ):
     """
     Notifies ALL admin recipients when a new applicant submits a form.
     Sends to ADMIN_NOTIFICATION_EMAILS (not the Gmail sender account).
     CC goes to ADMIN_CC_EMAILS.
-    CV is attached as a file so admin can open it directly from the email.
+    CV is attached as bytes so it works for both S3 and local storage.
     """
     subject = f"🆕 New Applicant: {applicant_name}"
 
@@ -391,7 +387,7 @@ async def send_admin_notification_new_applicant(
         </tr>
       </table>
 
-      {'<p style="margin:0 0 16px;font-size:13px;color:#059669;font-weight:600;">📎 CV attached to this email</p>' if cv_path else ''}
+      {'<p style="margin:0 0 16px;font-size:13px;color:#059669;font-weight:600;">📎 CV attached to this email</p>' if cv_bytes else ''}
 
       <p style="margin:0;font-size:13px;color:#6b7280;">
         Log in to the admin panel to review the full profile and update the status.
@@ -409,7 +405,8 @@ async def send_admin_notification_new_applicant(
         subject=subject,
         body_html=body,
         cc_emails=cc_list,
-        attachment_path=cv_path,   # CV attached for admin too
+        attachment_bytes=cv_bytes,    # bytes work for both S3 and local
+        attachment_filename=cv_filename,
     )
 
 

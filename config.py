@@ -13,12 +13,14 @@ class Settings(BaseSettings):
     DB_NAME: str
 
     # ── AWS S3 ───────────────────────────────────────────────────────────────
-    # S3 is disabled for now — CVs are stored locally in uploads/cvs/
-    # Uncomment these when switching to S3:
-    # AWS_ACCESS_KEY_ID: str
-    # AWS_SECRET_ACCESS_KEY: str
-    # AWS_REGION: str = "eu-central-1"
-    # S3_BUCKET_NAME: str
+    AWS_ACCESS_KEY_ID: str = ""
+    AWS_SECRET_ACCESS_KEY: str = ""
+    AWS_REGION: str = "eu-central-1"
+    S3_BUCKET_NAME: str = ""
+
+    # Set USE_S3_STORAGE=true in .env to upload CVs to S3.
+    # Set to false to store CVs in the local uploads/cvs/ folder.
+    USE_S3_STORAGE: bool = False
 
     # ── Gmail SMTP ───────────────────────────────────────────────────────────
     GMAIL_USER: str
