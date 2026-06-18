@@ -22,6 +22,7 @@ from db.db_helper import client as mongo_client
 from api.applicant_routes import router as applicant_router
 from api.employer_routes import router as employer_router
 from api.admin_routes import router as admin_router
+from api.site_content_routes import router as site_content_router
 from utils.logger import AppLogger
 
 
@@ -119,6 +120,7 @@ async def global_exception_handler(request: Request, exc: Exception):
 app.include_router(applicant_router)
 app.include_router(employer_router)
 app.include_router(admin_router)
+app.include_router(site_content_router)
 
 
 # Root Health Check

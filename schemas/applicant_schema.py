@@ -19,14 +19,14 @@ def applicant_helper(applicant: dict) -> dict:
         {"id": "abc123", "name": "Rahul", ...}
     """
     return {
-        "id": str(applicant["_id"]),         # Convert ObjectId → string
+        "id": str(applicant["_id"]),
         "name": applicant["name"],
         "email": applicant["email"],
         "phone": applicant["phone"],
         "skills": applicant.get("skills", []),
         "experience_years": applicant.get("experience_years", 0),
         "location": applicant.get("location", ""),
-        "cv_url": applicant.get("cv_url"),    # May be None if no CV uploaded yet
+        "cv_url": applicant.get("cv_url"),
         "status": applicant.get("status", "applied"),
         "tags": applicant.get("tags", []),
         "created_at": applicant.get("created_at"),

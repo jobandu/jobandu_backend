@@ -44,3 +44,19 @@ def get_employers_collection():
 def get_admins_collection():
     """Returns the 'admins' collection (stores admin login info)."""
     return db["admins"]
+
+
+def get_contact_collection():
+    """Returns the 'site_contact' collection."""
+    return db["site_contact"]
+
+
+def get_team_collection():
+    """Returns the 'site_team' collection."""
+    return db["site_team"]
+
+
+def get_jobs_collection():
+    """Returns the 'site_jobs' collection."""
+    return db["site_jobs"]
+

@@ -17,11 +17,25 @@ from bson import ObjectId
 from typing import List, Optional
 import os
 
-from db.db_helper import get_applicants_collection, get_employers_collection
+from db.db_helper import (
+    get_applicants_collection,
+    get_employers_collection,
+    get_contact_collection,
+    get_team_collection,
+    get_jobs_collection,
+)
 from models.applicant_model import ApplicantStatusUpdate
 from models.employer_model import EmployerStatusUpdate
+from models.site_content_model import (
+    ContactInfo,
+    TeamMember,
+    TeamMemberUpdate,
+    JobOpening,
+    JobOpeningUpdate,
+)
 from schemas.applicant_schema import applicant_helper
 from schemas.employer_schema import employer_helper
+from schemas.site_content_schema import contact_helper, team_helper, job_helper
 from services.email_service import send_email
 from config import settings
 from utils.auth import verify_admin
@@ -318,3 +332,152 @@ async def get_dashboard_stats():
             "total": sum(employer_stats.values()),
         },
     }
+
+
+# ── ADMIN SITE CONTENT ROUTES ──────────────────────────────────────────────────
+
+# ── CONTACT DETAILS ───────────────────────────────────────────────────────────
+
+@router.put("/content/contact", summary="Create or replace company contact details")
+async def update_contact_info(contact_data: ContactInfo):
+    """
+    Creates or replaces the single company contact details document.
+    """
+    collection = get_contact_collection()
+    
+    # We use empty filter {} and upsert=True to maintain exactly one contact document
+    await collection.update_one(
+        {},
+        {"$set": contact_data.model_dump()},
+        upsert=True
+    )
+    
+    # Fetch the updated document to return it
+    updated_doc = await collection.find_one()
+    logger.info("Company contact details updated by admin")
+    return {"message": "Contact details updated successfully", "contact": contact_helper(updated_doc)}
+
+
+# ── TEAM MEMBERS ──────────────────────────────────────────────────────────────
+
+@router.post("/content/team", summary="Add a new team member")
+async def add_team_member(member_data: TeamMember):
+    """
+    Adds a new team member.
+    """
+    collection = get_team_collection()
+    doc = member_data.model_dump()
+    
+    result = await collection.insert_one(doc)
+    doc["_id"] = result.inserted_id
+    
+    logger.info(f"Team member '{member_data.name}' added by admin")
+    return {"message": "Team member added successfully", "member": team_helper(doc)}
+
+
+@router.patch("/content/team/{member_id}", summary="Edit team member details")
+async def update_team_member(member_id: str, update_data: TeamMemberUpdate):
+    """
+    Updates details for a specific team member.
+    """
+    if not ObjectId.is_valid(member_id):
+        raise HTTPException(status_code=400, detail="Invalid team member ID format")
+        
+    collection = get_team_collection()
+    
+    # Filter out None values to perform partial update
+    update_fields = {k: v for k, v in update_data.model_dump().items() if v is not None}
+    if not update_fields:
+        raise HTTPException(status_code=400, detail="No fields provided for update")
+        
+    result = await collection.update_one(
+        {"_id": ObjectId(member_id)},
+        {"$set": update_fields}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Team member not found")
+        
+    logger.info(f"Team member {member_id} updated by admin")
+    return {"message": "Team member updated successfully", "updated_fields": update_fields}
+
+
+@router.delete("/content/team/{member_id}", summary="Remove a team member")
+async def delete_team_member(member_id: str):
+    """
+    Permanently removes a team member.
+    """
+    if not ObjectId.is_valid(member_id):
+        raise HTTPException(status_code=400, detail="Invalid team member ID format")
+        
+    collection = get_team_collection()
+    result = await collection.delete_one({"_id": ObjectId(member_id)})
+    
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Team member not found")
+        
+    logger.info(f"Team member {member_id} removed by admin")
+    return {"message": "Team member removed successfully"}
+
+
+# ── JOB OPENINGS ──────────────────────────────────────────────────────────────
+
+@router.post("/content/jobs", summary="Add a new job opening")
+async def add_job_opening(job_data: JobOpening):
+    """
+    Adds a new job opening.
+    """
+    collection = get_jobs_collection()
+    doc = job_data.model_dump()
+    
+    result = await collection.insert_one(doc)
+    doc["_id"] = result.inserted_id
+    
+    logger.info(f"Job opening '{job_data.title}' added by admin")
+    return {"message": "Job opening added successfully", "job": job_helper(doc)}
+
+
+@router.patch("/content/jobs/{job_id}", summary="Edit job opening details")
+async def update_job_opening(job_id: str, update_data: JobOpeningUpdate):
+    """
+    Updates details for a specific job opening.
+    """
+    if not ObjectId.is_valid(job_id):
+        raise HTTPException(status_code=400, detail="Invalid job opening ID format")
+        
+    collection = get_jobs_collection()
+    
+    # Filter out None values to perform partial update
+    update_fields = {k: v for k, v in update_data.model_dump().items() if v is not None}
+    if not update_fields:
+        raise HTTPException(status_code=400, detail="No fields provided for update")
+        
+    result = await collection.update_one(
+        {"_id": ObjectId(job_id)},
+        {"$set": update_fields}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Job opening not found")
+        
+    logger.info(f"Job opening {job_id} updated by admin")
+    return {"message": "Job opening updated successfully", "updated_fields": update_fields}
+
+
+@router.delete("/content/jobs/{job_id}", summary="Remove a job opening")
+async def delete_job_opening(job_id: str):
+    """
+    Permanently removes a job opening.
+    """
+    if not ObjectId.is_valid(job_id):
+        raise HTTPException(status_code=400, detail="Invalid job opening ID format")
+        
+    collection = get_jobs_collection()
+    result = await collection.delete_one({"_id": ObjectId(job_id)})
+    
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Job opening not found")
+        
+    logger.info(f"Job opening {job_id} removed by admin")
+    return {"message": "Job opening removed successfully"}
+
